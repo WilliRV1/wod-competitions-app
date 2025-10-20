@@ -7,9 +7,7 @@ const app = express();
 // Definir el puerto en el que escuchará el servidor
 const PORT = process.env.PORT || 5000;
 
-app.get('/', (req, res) => {
-    res.send('<h1>Primer pantalla app de crossfit</h1>');
-  });
+app.use(require("./routes/index.routes"))
 
 
 // Iniciar el servidor
