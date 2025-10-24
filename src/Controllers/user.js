@@ -75,10 +75,28 @@ exports.getUserID = async (req,res) => {
     
 }
 
-exports.putUser = (req,res) => {
-    res.json({ message: "Actualizando usuario" })
+exports.putUser = async (req,res) => {
+    try {
+        const id = req.params.id;
+        
+        const { nombre, apellidos, email, password, rol, nivel, box } = req.body;
+        const salt = await bcrypt.genSalt(10); // Genera el "salt"
+        const hashedPassword = await bcrypt.hash(password, salt); // Crea el hash
+        const atleta = await User.findById(id);
+        if (!atleta) {
+            return res.status(404).json({ message: "Usuario no encontrado" });
+        }
 
+        // 4. Si se encuentra, devolverlo
+        res.status(200).json({ 
+            message: "Atleta encontrado:", 
+            atleta: atleta 
+        });
 
+    } catch(error){
+        res.status(400).json({ message: "Error al buscar usuario", error: error.message });
+    }
+    
 }
 
 
