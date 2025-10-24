@@ -64,10 +64,3 @@ DELETE /api/users/:id: Borra un usuario específico.
 
 
 ---
-## Tu Próxima Misión (La Gran Final de Backend)
-
-1.  **Aplica los 3 arreglos** en tus archivos de `src/Models`.
-2.  **Actualiza tu `README.md`** con la plantilla que te di.
-3.  **Guarda y sube** todo este progreso a tu rama `Desarrollo` en GitHub.
-
-Cuando hayas hecho eso, estaremos listos para la fase más emocionante: hacer que nuestros controladores usen estos modelos para **crear, leer, actualizar y borrar usuarios de verdad** en la base de datos. ¡Estás a un paso de terminar todo el backend!
