@@ -1,13 +1,12 @@
-// --- Esquema para 'Competition' ---
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 const competitionSchema = new Schema({
-    // Mongoose añade _id automáticamente
-    Organizador: {
-        type: Schema.Types.ObjectId,
-        ref: 'User', // Asumiendo que referencia a la colección 'User'
+    nombre: {
+        type: String,
         required: true
     },
-    Fecha: {
+    fecha: {
         type: Date,
         required: true
     },
@@ -18,32 +17,31 @@ const competitionSchema = new Schema({
     descripcion: {
         type: String
     },
-    categorias: {
-        type: [String], // bsonType: array, items: { bsonType: string }
+    categorias: [{
+        type: String
+    }],
+    wods: [{
+        type: String // Un array de descripciones de WODs
+    }],
+    costo: {
+        type: String 
+    },
+    // --- RELACIONES ---
+    organizador: { // El Box que la crea
+        type: Schema.Types.ObjectId,
+        ref: 'Box',
         required: true
     },
-    wods: {
-        type: [String], // bsonType: array, items: { bsonType: string }
-        required: true
-    },
-    Costos: {
-        type: [String] // bsonType: array, items: { bsonType: string }
-    },
-    Participantes: {
-        // Traducido a Mixed porque el schema original permite dos tipos:
-        // un array (cuyos items son string) O un ObjectId.
-        type: Schema.Types.Mixed
-    },
-    Buscando_parejas: {
-        // Mismo caso que 'Participantes'.
-        type: Schema.Types.Mixed
-    }
+    atletas_inscritos: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    buscando_parejas: [{ // ¡El Partner Finder!
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 }, {
-    timestamps: true // Opcional
+    timestamps: true
 });
 
-const Competition = mongoose.model('Competition', competitionSchema);
-
-module.exports = {
-    Competition,
-};
+module.exports = mongoose.model('Competition', competitionSchema);
