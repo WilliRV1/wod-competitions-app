@@ -24,6 +24,8 @@ app.use(express.json()); // Middleware para que Express entienda JSON
 // 6. Configurar las Rutas
 app.use('/', require('./routes/index.routes'));
 app.use('/api/users', require('./routes/user.routes'));
+app.use('/api/boxes', require('./routes/box.routes'));
+app.use('/api/competencias', require('./routes/competition.routes'));
 
 // 7. Función para conectar a la Base de Datos e Iniciar el Servidor
 const startServer = async () => {

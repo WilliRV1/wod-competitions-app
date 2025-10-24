@@ -18,10 +18,10 @@ router.post('/', controller.newUser);
 
 // Antes era: /users/:id
 // Ahora es: /:id
-router.put("/:id", controller.putUser);
+router.put("/:id", authMiddleware,controller.putUser);
 
 // Antes era: /users/delete/:id (Esta también estaba mal)
 // Ahora es: /:id
-router.delete("/:id", controller.deleteUser);
+router.delete("/:id", authMiddleware,controller.deleteUser);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const router = Router();
-const controller = require("../Controllers/competition.controller");
+const controller = require("../Controllers/competition");
 const authMiddleware = require("../middlewares/auth.middleware");
 
 // --- Rutas Públicas (Cualquiera puede ver) ---
