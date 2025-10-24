@@ -37,12 +37,15 @@ Crea un archivo `.env` y añade la siguiente variable:
 ```env
 # Ejemplo de .env
 MONGODB_URI=tu-cadena-de-conexion-de-mongodb-atlas
+```
 Corriendo el Servidor
+
 Una vez instalado y con el .env configurado, puedes iniciar el servidor en modo de desarrollo:
 
-Bash
+```
 
 npm run dev
+```
 El servidor se iniciará en http://localhost:5000 y se conectará a tu base de datos de MongoDB Atlas.
 
 🛠️ API Endpoints (En Desarrollo)
