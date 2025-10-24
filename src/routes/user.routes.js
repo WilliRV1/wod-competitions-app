@@ -1,14 +1,26 @@
-const {Router} = require ("express");
+const { Router } = require("express");
 const router = Router();
-const controller = require("../Controllers/user.js")
+// Tu importación está perfecta, asumiendo que tu carpeta es "Controllers"
+const controller = require("../Controllers/user.js");
 
-router.get('/users', controller.getUser)
-router.get('/users/:id', controller.getUserID)
+// Antes era: /users
+// Ahora es: / (que significa /api/users)
+router.get('/', controller.getUser);
 
-router.post('/users',controller.newUser)
+// Antes era: /users/:id
+// Ahora es: /:id (que significa /api/users/:id)
+router.get('/:id', controller.getUserID);
 
-router.put("/users/:id",controller.putUser)
+// Antes era: /users
+// Ahora es: /
+router.post('/', controller.newUser);
 
-router.delete("/users/delete/:id", controller.deleteUser)
+// Antes era: /users/:id
+// Ahora es: /:id
+router.put("/:id", controller.putUser);
 
-module.exports = router
+// Antes era: /users/delete/:id (Esta también estaba mal)
+// Ahora es: /:id
+router.delete("/:id", controller.deleteUser);
+
+module.exports = router;
