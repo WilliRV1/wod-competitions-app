@@ -2,6 +2,7 @@ const { Router } = require("express");
 const router = Router();
 // Tu importación está perfecta, asumiendo que tu carpeta es "Controllers"
 const controller = require("../Controllers/user.js");
+const authMiddleware = require("../middlewares/auth.middleware");
 
 // Antes era: /users
 // Ahora es: / (que significa /api/users)

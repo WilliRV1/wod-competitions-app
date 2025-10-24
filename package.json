@@ -19,9 +19,9 @@
   },
   "homepage": "https://github.com/WilliRV1/wod-competitions-app#readme",
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "firebase-admin": "^13.5.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.2"
   },

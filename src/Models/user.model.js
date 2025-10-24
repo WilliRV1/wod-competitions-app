@@ -2,31 +2,33 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
-    nombre: {
+    firebaseUid: { // <-- AÑADIDO
         type: String,
         required: true,
-        trim: true // Limpia espacios en blanco
+        unique: true
     },
-    apellidos: {
-        type: String,
-        required: true,
-        trim: true
+    nombre: { 
+        type: String, 
+        required: true, 
+        trim: true 
     },
-    email: {
-        type: String,
-        required: true,
-        unique: true, // No pueden existir dos emails iguales
-        trim: true,
-        lowercase: true // Siempre guarda en minúscula
+    apellidos: { 
+        type: String, 
+        required: true, 
+        trim: true 
     },
-    password: {
-        type: String,
-        required: true
+    email: { 
+        type: String, 
+        required: true, 
+        unique: true, 
+        trim: true, 
+        lowercase: true 
     },
-    rol: {
-        type: String,
-        required: true,
-        enum: ['atleta', 'dueño_box'] // 'atleta' o 'dueño_box'
+    // password: { ... }, // <-- ELIMINADO
+    rol: { 
+        type: String, 
+        required: true, 
+        enum: ['atleta', 'dueño_box'] 
     },
     nivel: {
         type: String,

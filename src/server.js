@@ -1,6 +1,13 @@
 // 1. Importar dotenv para cargar variables de entorno (¡DE PRIMERO!)
 require('dotenv').config();
 
+const admin = require('firebase-admin');
+const serviceAccount = require('../firebase-service-account.json'); // Importa la llave
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 // 2. Importar las librerías
 const express = require('express');
 const mongoose = require('mongoose');

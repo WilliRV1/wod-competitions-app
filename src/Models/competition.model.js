@@ -30,8 +30,8 @@ const competitionSchema = new Schema({
     organizador: { // El Box que la crea
         type: Schema.Types.ObjectId,
         ref: 'Box',
-        required: true
     },
+
     atletas_inscritos: [{
         type: Schema.Types.ObjectId,
         ref: 'User'
