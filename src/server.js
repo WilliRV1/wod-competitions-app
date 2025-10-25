@@ -7,7 +7,7 @@ const serviceAccount = require('../firebase-service-account.json'); // Importa l
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
-
+const cors = require('cors');
 // 2. Importar las librerías
 const express = require('express');
 const mongoose = require('mongoose');
@@ -19,6 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // 5. Configurar Middlewares (¡ANTES DE LAS RUTAS!)
+app.use(cors());
 app.use(express.json()); // Middleware para que Express entienda JSON
 
 // 6. Configurar las Rutas
