@@ -7,8 +7,8 @@ const User = require('../Models/user.model.js');
 exports.getAllCompetitions = async (req, res) => {
     try {
         const competitions = await Competition.find()
-            .populate('organizador', 'nombre') // Trae el nombre del Box
-            .populate('creador', 'nombre'); // Trae el nombre del Atleta creador
+            .populate('organizador', 'nombre')
+            .populate('creador', 'nombre');
         res.status(200).json({ competitions });
     } catch (error) {
         res.status(400).json({ message: "Error al obtener competencias", error: error.message });
@@ -38,44 +38,76 @@ exports.getCompetitionById = async (req, res) => {
 // Protegida (Cualquier usuario logueado puede crear)
 exports.createCompetition = async (req, res) => {
     try {
+        console.log("📝 Datos recibidos en el backend:", req.body);
+        console.log("👤 Usuario del token:", req.user.uid);
+
         // 1. Obtener datos del body
         const { nombre, fecha, lugar, descripcion, categorias, wods, costo, organizadorBoxId } = req.body;
 
-        // 2. Obtener el usuario que hace la petición
+        // 2. Validar campos obligatorios
+        if (!nombre || !fecha || !lugar) {
+            return res.status(400).json({ message: "Faltan campos obligatorios: nombre, fecha, lugar" });
+        }
+
+        // 3. Obtener el usuario que hace la petición
         const user = await User.findOne({ firebaseUid: req.user.uid });
         if (!user) {
             return res.status(404).json({ message: "Perfil de usuario no encontrado" });
         }
         
+        console.log("✅ Usuario encontrado:", user.nombre, "- Rol:", user.rol);
+
         const newCompetitionData = {
-            nombre, fecha, lugar, descripcion, categorias, wods, costo
+            nombre, 
+            fecha, 
+            lugar, 
+            descripcion: descripcion || '', 
+            categorias: categorias || [], 
+            wods: wods || [], 
+            costo: costo || ''
         };
 
-        // 3. LÓGICA DE PROPIEDAD (¡NUEVO!)
+        // 4. LÓGICA DE PROPIEDAD
         if (user.rol === 'dueño_box' && organizadorBoxId) {
             // Es un DUEÑO DE BOX creando una competencia OFICIAL
             const box = await Box.findById(organizadorBoxId);
             
-            // Verificamos que el box exista y que el usuario sea el dueño
-            if (box && box.owner.toString() === user._id.toString()) {
-                newCompetitionData.organizador = organizadorBoxId; // Asigna el Box
-            } else {
+            if (!box) {
+                return res.status(404).json({ message: "Box no encontrado." });
+            }
+
+            if (box.owner.toString() !== user._id.toString()) {
                 return res.status(403).json({ message: "No eres el dueño de ese Box." });
             }
-        } else if (user.rol === 'atleta') {
-            // Es un ATLETA creando una competencia COMUNITARIA
-            newCompetitionData.creador = user._id; // Asigna el User
+
+            newCompetitionData.organizador = organizadorBoxId;
+            console.log("🏢 Competencia OFICIAL creada por Box:", box.nombre);
+
+        } else if (user.rol === 'atleta' || (user.rol === 'dueño_box' && !organizadorBoxId)) {
+            // Es un ATLETA o un DUEÑO creando competencia COMUNITARIA
+            newCompetitionData.creador = user._id;
+            console.log("👥 Competencia COMUNITARIA creada por:", user.nombre);
         } else {
             return res.status(400).json({ message: "Datos de creador inválidos." });
         }
 
-        // 4. Crear la competencia
+        // 5. Crear la competencia
         const newCompetition = new Competition(newCompetitionData);
         await newCompetition.save();
-        res.status(201).json({ message: "Competencia creada exitosamente", competition: newCompetition });
+        
+        console.log("🎉 Competencia creada exitosamente:", newCompetition._id);
+        
+        res.status(201).json({ 
+            message: "Competencia creada exitosamente", 
+            competition: newCompetition 
+        });
 
     } catch (error) {
-        res.status(400).json({ message: "Error al crear la competencia", error: error.message });
+        console.error("❌ Error al crear competencia:", error);
+        res.status(400).json({ 
+            message: "Error al crear la competencia", 
+            error: error.message 
+        });
     }
 };
 
@@ -86,27 +118,22 @@ exports.updateCompetition = async (req, res) => {
         const competitionId = req.params.id;
         const datosParaActualizar = req.body;
 
-        // 1. Verificar que la competencia exista
         const competition = await Competition.findById(competitionId);
         if (!competition) {
             return res.status(404).json({ message: "Competencia no encontrada" });
         }
 
-        // 2. Obtener el usuario
         const user = await User.findOne({ firebaseUid: req.user.uid });
         if (!user) {
             return res.status(404).json({ message: "Perfil de usuario no encontrado" });
         }
 
-        // 3. LÓGICA DE PERMISOS (¡NUEVO!)
         let tienePermiso = false;
         
-        // Es el creador (atleta)?
         if (competition.creador && competition.creador.toString() === user._id.toString()) {
             tienePermiso = true;
         }
         
-        // Es el organizador (dueño_box)?
         if (competition.organizador) {
             const box = await Box.findById(competition.organizador);
             if (box && box.owner.toString() === user._id.toString()) {
@@ -118,7 +145,6 @@ exports.updateCompetition = async (req, res) => {
             return res.status(403).json({ message: "No tienes permisos para editar esta competencia" });
         }
 
-        // 4. Actualizar la competencia
         const updatedCompetition = await Competition.findByIdAndUpdate(competitionId, datosParaActualizar, { new: true });
         res.status(200).json({ message: "Competencia actualizada", competition: updatedCompetition });
 
@@ -133,27 +159,22 @@ exports.deleteCompetition = async (req, res) => {
     try {
         const competitionId = req.params.id;
 
-        // 1. Verificar que la competencia exista
         const competition = await Competition.findById(competitionId);
         if (!competition) {
             return res.status(404).json({ message: "Competencia no encontrada" });
         }
 
-        // 2. Obtener el usuario
         const user = await User.findOne({ firebaseUid: req.user.uid });
         if (!user) {
             return res.status(404).json({ message: "Perfil de usuario no encontrado" });
         }
 
-        // 3. LÓGICA DE PERMISOS 
         let tienePermiso = false;
         
-        // Es el creador (atleta)?
         if (competition.creador && competition.creador.toString() === user._id.toString()) {
             tienePermiso = true;
         }
         
-        // Es el organizador (dueño_box)?
         if (competition.organizador) {
             const box = await Box.findById(competition.organizador);
             if (box && box.owner.toString() === user._id.toString()) {
@@ -165,7 +186,6 @@ exports.deleteCompetition = async (req, res) => {
             return res.status(403).json({ message: "No tienes permisos para eliminar esta competencia" });
         }
 
-        // 4. Eliminar la competencia
         await Competition.findByIdAndDelete(competitionId);
         res.status(200).json({ message: "Competencia eliminada exitosamente" });
 
@@ -174,36 +194,27 @@ exports.deleteCompetition = async (req, res) => {
     }
 };
 
-
 exports.joinPartnerFinder = async (req, res) => {
      try {
-        // 1. Obtener el ID de la competencia de los parámetros
         const competitionId = req.params.id;
-
-        // 2. Obtener el Firebase UID del token (puesto por el middleware)
         const firebaseUid = req.user.uid;
 
-        // 3. Encontrar al usuario en NUESTRA base de datos (MongoDB) para obtener su _id
         const user = await User.findOne({ firebaseUid: firebaseUid });
         if (!user) {
             return res.status(404).json({ message: "Perfil de usuario no encontrado" });
         }
         
-        // 4. Añadir el _id del usuario al array 'buscando_parejas' de la competencia
-        // Usamos $addToSet en lugar de $push para evitar duplicados
         const updatedCompetition = await Competition.findByIdAndUpdate(
             competitionId,
-            { $addToSet: { buscando_parejas: user._id } }, // Añade al interesado a la lista de "buscando parejas"
-            { new: true } // Devuelve el documento actualizado
+            { $addToSet: { buscando_parejas: user._id } },
+            { new: true }
         )
-        // Opcional: Poblamos la lista para devolverla actualizada al frontend
         .populate('buscando_parejas', 'nombre nivel'); 
 
         if (!updatedCompetition) {
             return res.status(404).json({ message: "Competencia no encontrada" });
         }
 
-        // 5. Devolver la competencia actualizada
         res.status(200).json({ 
             message: "¡Te has unido al Partner Finder!", 
             competition: updatedCompetition 
