@@ -99,3 +99,27 @@ exports.deleteBox = async (req, res) => {
         res.status(400).json({ message: "Error al eliminar Box", error: error.message });
     }
 };
+
+exports.getMyBoxes = async (req, res) => {
+    try {
+        // req.user.uid viene del middleware de autenticación (Firebase UID)
+        const ownerFirebaseUid = req.user.uid;
+
+        // 1. Buscar al usuario en MongoDB para obtener su _id
+        const user = await User.findOne({ firebaseUid: ownerFirebaseUid });
+        if (!user) {
+            // Aunque el token es válido, puede que el perfil no exista aún en MongoDB
+            console.warn(`Usuario con Firebase UID ${ownerFirebaseUid} no encontrado en MongoDB.`);
+            return res.status(200).json({ boxes: [] }); // Devolver array vacío si no se encuentra el perfil
+        }
+
+        // 2. Buscar los boxes donde el campo 'owner' coincida con el _id del usuario
+        const userBoxes = await Box.find({ owner: user._id }).select('nombre _id'); // Seleccionar solo nombre e ID
+
+        res.status(200).json({ boxes: userBoxes });
+
+    } catch (error) {
+        console.error("Error al obtener mis boxes:", error);
+        res.status(500).json({ message: "Error interno al obtener los boxes del usuario", error: error.message });
+    }
+};
