@@ -2,7 +2,7 @@
 require('dotenv').config();
 
 const admin = require('firebase-admin');
-const serviceAccount = require('../firebase-service-account.json'); // Importa la llave
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); // Importa la llave
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
