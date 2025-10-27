@@ -173,3 +173,43 @@ exports.deleteCompetition = async (req, res) => {
         res.status(400).json({ message: "Error al eliminar la competencia", error: error.message });
     }
 };
+
+
+exports.joinPartnerFinder = async (req, res) => {
+     try {
+        // 1. Obtener el ID de la competencia de los parámetros
+        const competitionId = req.params.id;
+
+        // 2. Obtener el Firebase UID del token (puesto por el middleware)
+        const firebaseUid = req.user.uid;
+
+        // 3. Encontrar al usuario en NUESTRA base de datos (MongoDB) para obtener su _id
+        const user = await User.findOne({ firebaseUid: firebaseUid });
+        if (!user) {
+            return res.status(404).json({ message: "Perfil de usuario no encontrado" });
+        }
+        
+        // 4. Añadir el _id del usuario al array 'buscando_parejas' de la competencia
+        // Usamos $addToSet en lugar de $push para evitar duplicados
+        const updatedCompetition = await Competition.findByIdAndUpdate(
+            competitionId,
+            { $addToSet: { buscando_parejas: user._id } }, // Añade al interesado a la lista de "buscando parejas"
+            { new: true } // Devuelve el documento actualizado
+        )
+        // Opcional: Poblamos la lista para devolverla actualizada al frontend
+        .populate('buscando_parejas', 'nombre nivel'); 
+
+        if (!updatedCompetition) {
+            return res.status(404).json({ message: "Competencia no encontrada" });
+        }
+
+        // 5. Devolver la competencia actualizada
+        res.status(200).json({ 
+            message: "¡Te has unido al Partner Finder!", 
+            competition: updatedCompetition 
+        });
+
+    } catch (error) {
+        res.status(400).json({ message: "Error al unirse al Partner Finder", error: error.message });
+    }
+};

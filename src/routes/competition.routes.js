@@ -10,6 +10,7 @@ router.get('/:id', controller.getCompetitionById);
 // --- Rutas Protegidas (Solo usuarios autenticados) ---
 router.post('/', authMiddleware, controller.createCompetition);
 router.put('/:id', authMiddleware, controller.updateCompetition);
+router.put('/:id/join-partner', authMiddleware,controller.joinPartnerFinder)
 router.delete('/:id', authMiddleware, controller.deleteCompetition);
 
 module.exports = router;
