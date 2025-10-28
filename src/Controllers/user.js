@@ -1,18 +1,20 @@
-// 1. Importar el Modelo
 const User = require("../Models/user.model.js");
 
 // --- OBTENER TODOS LOS USUARIOS (READ) ---
 exports.getUser = async (req, res) => {
     try {
-        const allAtletas = await User.find({});
-        // Por seguridad, evitamos devolver las contraseñas (aunque ya no las guardamos)
-        // Podríamos seleccionar campos específicos: .select('nombre apellidos email rol nivel box')
+        const allUsers = await User.find({})
+            .select('-firebaseUid'); // No exponer el UID
+        
         res.status(200).json({
-            message: "Todos Los Atletas: ",
-            allAtletas: allAtletas
+            message: "Todos los usuarios",
+            users: allUsers
         });
     } catch(error) {
-        res.status(400).json({ message: "Error al buscar usuarios", error: error.message });
+        res.status(400).json({ 
+            message: "Error al buscar usuarios", 
+            error: error.message 
+        });
     }
 };
 
@@ -20,36 +22,56 @@ exports.getUser = async (req, res) => {
 // Se llama DESPUÉS de que Firebase crea la cuenta
 exports.newUser = async (req, res) => {
     try {
-        const { nombre, apellidos, email, firebaseUid, rol, nivel, box } = req.body;
+        const { 
+            nombre, 
+            apellidos, 
+            email, 
+            firebaseUid, 
+            nivel,
+            boxAfiliado 
+        } = req.body;
 
-        // Validaciones básicas (puedes añadir más)
-        if (!firebaseUid || !email || !nombre || !apellidos || !rol) {
-            return res.status(400).json({ message: "Faltan datos requeridos (firebaseUid, email, nombre, apellidos, rol)." });
+        // Validaciones básicas
+        if (!firebaseUid || !email || !nombre || !apellidos) {
+            return res.status(400).json({ 
+                message: "Faltan datos requeridos (firebaseUid, email, nombre, apellidos)." 
+            });
         }
 
         const nuevoUsuario = new User({
-            firebaseUid: firebaseUid,
-            nombre: nombre,
-            apellidos: apellidos,
-            email: email,
-            rol: rol,
-            nivel: nivel,
-            box: box
+            firebaseUid,
+            nombre,
+            apellidos,
+            email,
+            nivel: nivel || 'Novato',
+            boxAfiliado: boxAfiliado || null
         });
 
         await nuevoUsuario.save();
 
         res.status(201).json({
             message: "¡Perfil de usuario creado exitosamente!",
-            userId: nuevoUsuario._id
+            userId: nuevoUsuario._id,
+            user: {
+                nombre: nuevoUsuario.nombre,
+                apellidos: nuevoUsuario.apellidos,
+                email: nuevoUsuario.email,
+                nivel: nuevoUsuario.nivel
+            }
         });
 
     } catch (error) {
-        // Manejo específico para error de duplicado (unique)
-        if (error.code === 11000) { // Código de error de duplicado de MongoDB
-             return res.status(400).json({ message: "Error al crear el perfil: El email o firebaseUid ya existe.", field: error.keyValue });
+        // Manejo específico para error de duplicado
+        if (error.code === 11000) {
+             return res.status(400).json({ 
+                 message: "El email o firebaseUid ya existe.", 
+                 field: error.keyValue 
+             });
         }
-        res.status(400).json({ message: "Error al crear el perfil", error: error.message });
+        res.status(400).json({ 
+            message: "Error al crear el perfil", 
+            error: error.message 
+        });
     }
 };
 
@@ -57,103 +79,125 @@ exports.newUser = async (req, res) => {
 exports.getUserID = async (req, res) => {
     try {
         const id = req.params.id;
-        const atleta = await User.findById(id); //.select('-password'); // Excluir contraseña si aún existiera
+        const user = await User.findById(id)
+            .select('-firebaseUid'); // No exponer el UID
 
-        if (!atleta) {
-            return res.status(404).json({ message: "Usuario no encontrado" });
+        if (!user) {
+            return res.status(404).json({ 
+                message: "Usuario no encontrado" 
+            });
         }
 
         res.status(200).json({
-            message: "Atleta encontrado:",
-            atleta: atleta
+            message: "Usuario encontrado",
+            user: user
         });
 
     } catch(error) {
-         // Manejo de error si el ID tiene formato inválido
         if (error.kind === 'ObjectId') {
-             return res.status(400).json({ message: "ID de usuario inválido" });
+             return res.status(400).json({ 
+                 message: "ID de usuario inválido" 
+             });
         }
-        res.status(400).json({ message: "Error al buscar usuario", error: error.message });
+        res.status(400).json({ 
+            message: "Error al buscar usuario", 
+            error: error.message 
+        });
     }
 };
 
 // --- ACTUALIZAR UN USUARIO (UPDATE) ---
-// Protegida por middleware
 exports.putUser = async (req, res) => {
     try {
-        const userIdToUpdate = req.params.id; // ID del perfil a actualizar (MongoDB _id)
-        const firebaseUidFromToken = req.user.uid; // UID del usuario autenticado (viene del middleware)
+        const userIdToUpdate = req.params.id;
+        const firebaseUidFromToken = req.user.uid;
         const datosParaActualizar = req.body;
 
-        // **Verificación de Seguridad:** Asegurarse que el usuario autenticado es dueño del perfil
+        // Verificación de seguridad
         const userToUpdate = await User.findById(userIdToUpdate);
 
         if (!userToUpdate) {
-            return res.status(404).json({ message: "Usuario no encontrado para actualizar" });
+            return res.status(404).json({ 
+                message: "Usuario no encontrado" 
+            });
         }
 
-        // Compara el UID de Firebase del token con el UID guardado en el perfil
         if (userToUpdate.firebaseUid !== firebaseUidFromToken) {
-            return res.status(403).json({ message: "No tienes permiso para actualizar este perfil." });
+            return res.status(403).json({ 
+                message: "No tienes permiso para actualizar este perfil." 
+            });
         }
 
-        // Evitar que se actualicen campos sensibles como firebaseUid o rol directamente
-        // (Podrías tener rutas/lógica separada para cambio de rol si es necesario)
+        // Campos protegidos
         delete datosParaActualizar.firebaseUid;
-        delete datosParaActualizar.email; // Generalmente no se permite cambiar el email fácilmente
-        delete datosParaActualizar.rol;
-        delete datosParaActualizar.password; // Ya no existe, pero buena práctica dejarlo por si acaso
+        delete datosParaActualizar.email;
+        delete datosParaActualizar.esBoxVerificado;
+        delete datosParaActualizar.boxPropietario;
 
-        // Actualizar el usuario
-        const atletaActualizado = await User.findByIdAndUpdate(userIdToUpdate, datosParaActualizar, { new: true }); // {new: true} devuelve el documento actualizado
+        // Actualizar
+        const userActualizado = await User.findByIdAndUpdate(
+            userIdToUpdate, 
+            datosParaActualizar, 
+            { new: true }
+        ).select('-firebaseUid');
 
         res.status(200).json({
-            message: "Atleta actualizado:",
-            atleta: atletaActualizado
+            message: "Usuario actualizado",
+            user: userActualizado
         });
 
     } catch(error) {
         if (error.kind === 'ObjectId') {
-             return res.status(400).json({ message: "ID de usuario inválido" });
+             return res.status(400).json({ 
+                 message: "ID de usuario inválido" 
+             });
         }
-        res.status(400).json({ message: "Error al actualizar usuario", error: error.message });
+        res.status(400).json({ 
+            message: "Error al actualizar usuario", 
+            error: error.message 
+        });
     }
 };
 
 // --- BORRAR UN USUARIO (DELETE) ---
-// Protegida por middleware
 exports.deleteUser = async (req, res) => {
     try {
-        const userIdToDelete = req.params.id; // ID del perfil a borrar (MongoDB _id)
-        const firebaseUidFromToken = req.user.uid; // UID del usuario autenticado
+        const userIdToDelete = req.params.id;
+        const firebaseUidFromToken = req.user.uid;
 
-        // **Verificación de Seguridad:**
         const userToDelete = await User.findById(userIdToDelete);
 
         if (!userToDelete) {
-            return res.status(404).json({ message: "Usuario no encontrado para eliminar" });
+            return res.status(404).json({ 
+                message: "Usuario no encontrado" 
+            });
         }
 
         if (userToDelete.firebaseUid !== firebaseUidFromToken) {
-            return res.status(403).json({ message: "No tienes permiso para eliminar este perfil." });
+            return res.status(403).json({ 
+                message: "No tienes permiso para eliminar este perfil." 
+            });
         }
 
-        // Borrar el usuario de MongoDB
-        const atletaBorrado = await User.findByIdAndDelete(userIdToDelete);
-
-        // **Opcional pero recomendado:** Aquí podrías añadir lógica para borrar
-        // también la cuenta del usuario en Firebase Authentication usando el Admin SDK
-        // await admin.auth().deleteUser(firebaseUidFromToken);
+        const userBorrado = await User.findByIdAndDelete(userIdToDelete);
 
         res.status(200).json({
-            message: "Atleta eliminado exitosamente de la base de datos",
-            atleta: atletaBorrado // Devuelve el perfil borrado como confirmación
+            message: "Usuario eliminado exitosamente",
+            user: {
+                nombre: userBorrado.nombre,
+                email: userBorrado.email
+            }
         });
 
     } catch(error) {
         if (error.kind === 'ObjectId') {
-             return res.status(400).json({ message: "ID de usuario inválido" });
+             return res.status(400).json({ 
+                 message: "ID de usuario inválido" 
+             });
         }
-        res.status(400).json({ message: "Error al eliminar usuario", error: error.message });
+        res.status(400).json({ 
+            message: "Error al eliminar usuario", 
+            error: error.message 
+        });
     }
 };
