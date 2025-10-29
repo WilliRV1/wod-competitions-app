@@ -1,27 +1,21 @@
 const { Router } = require("express");
 const router = Router();
-// Tu importación está perfecta, asumiendo que tu carpeta es "Controllers"
 const controller = require("../Controllers/user.js");
 const authMiddleware = require("../middlewares/auth.middleware");
 
-// Antes era: /users
-// Ahora es: / (que significa /api/users)
-router.get('/', controller.getUser);
+// --- Ruta especial para obtener MI perfil (con token) ---
+// IMPORTANTE: Esta debe ir ANTES de '/:id' para que no la capture
+router.get('/me', authMiddleware, controller.getMyProfile);
 
-// Antes era: /users/:id
-// Ahora es: /:id (que significa /api/users/:id)
+// --- Rutas públicas ---
+router.get('/', controller.getUser);
 router.get('/:id', controller.getUserID);
 
-// Antes era: /users
-// Ahora es: /
+// --- Ruta de creación (sin auth porque es para registro inicial) ---
 router.post('/', controller.newUser);
 
-// Antes era: /users/:id
-// Ahora es: /:id
-router.put("/:id", authMiddleware,controller.putUser);
-
-// Antes era: /users/delete/:id (Esta también estaba mal)
-// Ahora es: /:id
-router.delete("/:id", authMiddleware,controller.deleteUser);
+// --- Rutas protegidas ---
+router.put("/:id", authMiddleware, controller.putUser);
+router.delete("/:id", authMiddleware, controller.deleteUser);
 
 module.exports = router;

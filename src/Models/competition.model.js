@@ -10,32 +10,43 @@ const competitionSchema = new Schema({
     wods: [{ type: String }],
     costo: { type: String },
 
-    // --- LÓGICA DE PROPIEDAD ---
-    organizador: { 
+    // 🎯 SIMPLIFICADO: Solo un creador (cualquier usuario)
+    creador: {
         type: Schema.Types.ObjectId,
-        ref: 'Box', 
-        required: false 
+        ref: 'User',
+        required: true
     },
-    creador: { // <-- ¡ASEGÚRATE DE QUE ESTÉ ESTE CAMPO!
-        type: Schema.Types.ObjectId,
-        ref: 'User', 
-        required: false 
-    },
-    // --- FIN LÓGICA ---
 
-    atletas_inscritos: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    buscando_parejas: [{ type: Schema.Types.ObjectId, ref: 'User' }]
+    // 📍 Opcional: Si representa a un box (texto libre)
+    boxRepresentado: {
+        type: String,
+        trim: true,
+        default: null
+    },
+
+    // 🔮 FUTURO: Para boxes verificados
+    organizadorVerificado: {
+        type: Schema.Types.ObjectId,
+        ref: 'Box',
+        default: null
+    },
+
+    // --- PARTICIPANTES ---
+    atletas_inscritos: [{ 
+        type: Schema.Types.ObjectId, 
+        ref: 'User' 
+    }],
+    
+    buscando_parejas: [{ 
+        type: Schema.Types.ObjectId, 
+        ref: 'User' 
+    }]
 }, {
     timestamps: true
 });
 
-// Validacion: Una competencia debe tener un creador O un organizador
-competitionSchema.pre('save', function(next) {
-  if (!this.organizador && !this.creador) {
-    next(new Error('La competencia debe tener un organizador (Box) o un creador (Atleta).'));
-  } else {
-    next();
-  }
-});
+// Índices para búsquedas
+competitionSchema.index({ fecha: 1 });
+competitionSchema.index({ creador: 1 });
 
 module.exports = mongoose.model('Competition', competitionSchema);

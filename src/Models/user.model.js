@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
-    firebaseUid: { // <-- AÑADIDO
+    firebaseUid: {
         type: String,
         required: true,
         unique: true
@@ -24,29 +24,45 @@ const userSchema = new Schema({
         trim: true, 
         lowercase: true 
     },
-    // password: { ... }, // <-- ELIMINADO
-    rol: { 
-        type: String, 
-        required: true, 
-        enum: ['atleta', 'dueño_box'] 
-    },
+    
+    // 🎯 SIMPLIFICADO: Solo nivel, sin rol complejo
     nivel: {
         type: String,
         enum: ['Novato', 'Intermedio', 'RX'],
         default: 'Novato'
     },
-    // --- RELACIONES ---
-    box: {
-        type: Schema.Types.ObjectId,
-        ref: 'Box' // Conecta con el modelo Box
+    
+    // 📍 Opcional: Box donde entrena (texto libre por ahora)
+    boxAfiliado: {
+        type: String,
+        trim: true,
+        default: null
     },
-    competencias: [{ // Un array de IDs
+    
+    // 🔮 FUTURO: Para verificación de boxes oficiales
+    esBoxVerificado: {
+        type: Boolean,
+        default: false
+    },
+    
+    // 🔮 FUTURO: Referencia al Box si es dueño verificado
+    boxPropietario: {
         type: Schema.Types.ObjectId,
-        ref: 'Competition' // Conecta con el modelo Competition
+        ref: 'Box',
+        default: null
+    },
+    
+    // --- RELACIONES ---
+    competencias: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Competition'
     }]
 }, {
-    timestamps: true // Añade createdAt y updatedAt
+    timestamps: true
 });
 
-// Este es el sello final que exporta el modelo
+// Índices para búsquedas rápidas
+userSchema.index({ email: 1 });
+userSchema.index({ firebaseUid: 1 });
+
 module.exports = mongoose.model('User', userSchema);
