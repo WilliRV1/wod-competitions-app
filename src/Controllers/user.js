@@ -1,10 +1,44 @@
 const User = require("../Models/user.model.js");
 
+// --- OBTENER PERFIL DEL USUARIO ACTUAL (TOKEN) ---
+exports.getMyProfile = async (req, res) => {
+    try {
+        // req.user.uid viene del middleware de autenticación
+        const firebaseUid = req.user.uid;
+        
+        console.log("🔍 Buscando perfil para Firebase UID:", firebaseUid);
+
+        const user = await User.findOne({ firebaseUid })
+            .select('-firebaseUid'); // No exponer el UID en la respuesta
+
+        if (!user) {
+            console.warn("⚠️ Perfil no encontrado para UID:", firebaseUid);
+            return res.status(404).json({ 
+                message: "Perfil de usuario no encontrado. Por favor completa tu registro." 
+            });
+        }
+
+        console.log("✅ Perfil encontrado:", user.nombre);
+
+        res.status(200).json({
+            message: "Perfil obtenido exitosamente",
+            user: user
+        });
+
+    } catch (error) {
+        console.error("❌ Error al obtener perfil:", error);
+        res.status(500).json({ 
+            message: "Error interno al obtener el perfil", 
+            error: error.message 
+        });
+    }
+};
+
 // --- OBTENER TODOS LOS USUARIOS (READ) ---
 exports.getUser = async (req, res) => {
     try {
         const allUsers = await User.find({})
-            .select('-firebaseUid'); // No exponer el UID
+            .select('-firebaseUid');
         
         res.status(200).json({
             message: "Todos los usuarios",
@@ -19,7 +53,6 @@ exports.getUser = async (req, res) => {
 };
 
 // --- CREAR PERFIL DE USUARIO (CREATE) ---
-// Se llama DESPUÉS de que Firebase crea la cuenta
 exports.newUser = async (req, res) => {
     try {
         const { 
@@ -31,7 +64,6 @@ exports.newUser = async (req, res) => {
             boxAfiliado 
         } = req.body;
 
-        // Validaciones básicas
         if (!firebaseUid || !email || !nombre || !apellidos) {
             return res.status(400).json({ 
                 message: "Faltan datos requeridos (firebaseUid, email, nombre, apellidos)." 
@@ -61,7 +93,6 @@ exports.newUser = async (req, res) => {
         });
 
     } catch (error) {
-        // Manejo específico para error de duplicado
         if (error.code === 11000) {
              return res.status(400).json({ 
                  message: "El email o firebaseUid ya existe.", 
@@ -80,7 +111,7 @@ exports.getUserID = async (req, res) => {
     try {
         const id = req.params.id;
         const user = await User.findById(id)
-            .select('-firebaseUid'); // No exponer el UID
+            .select('-firebaseUid');
 
         if (!user) {
             return res.status(404).json({ 
@@ -113,7 +144,6 @@ exports.putUser = async (req, res) => {
         const firebaseUidFromToken = req.user.uid;
         const datosParaActualizar = req.body;
 
-        // Verificación de seguridad
         const userToUpdate = await User.findById(userIdToUpdate);
 
         if (!userToUpdate) {
@@ -128,13 +158,11 @@ exports.putUser = async (req, res) => {
             });
         }
 
-        // Campos protegidos
         delete datosParaActualizar.firebaseUid;
         delete datosParaActualizar.email;
         delete datosParaActualizar.esBoxVerificado;
         delete datosParaActualizar.boxPropietario;
 
-        // Actualizar
         const userActualizado = await User.findByIdAndUpdate(
             userIdToUpdate, 
             datosParaActualizar, 
