@@ -52,6 +52,34 @@ const userSchema = new Schema({
         default: null
     },
 
+    // ===== BATTLE-RELATED FIELDS =====
+    battleStats: {
+        wins: {
+            type: Number,
+            default: 0
+        },
+        losses: {
+            type: Number,
+            default: 0
+        },
+        ranking: {
+            type: Number,
+            default: null
+        }
+    },
+
+    battleHistory: [{
+        type: String // Assuming battle IDs are strings; adjust to ObjectId if battles are modeled separately
+    }],
+
+    preferredCategories: [{
+        type: String
+    }],
+
+    preferredWeightClasses: [{
+        type: String
+    }],
+
     // ===== METADATA PARA UX =====
     profileCompleted: {
         type: Boolean,
