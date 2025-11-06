@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 const serviceAccount = require('../firebase-service-account.json'); // Importa la llave
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount)
 });
 const cors = require('cors');
 // 2. Importar las librerías
@@ -27,23 +27,25 @@ app.use('/', require('./routes/index.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/boxes', require('./routes/box.routes'));
 app.use('/api/competencias', require('./routes/competition.routes'));
+app.use('/api/battle-registrations', require('./routes/battleRegistration.routes'));
+
 
 // 7. Función para conectar a la Base de Datos e Iniciar el Servidor
 const startServer = async () => {
-    try {
-        // Conectar a MongoDB usando la URI de .env (¡SEGURO!)
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ Base de datos conectada exitosamente');
+    try {
+        // Conectar a MongoDB usando la URI de .env (¡SEGURO!)
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log('✅ Base de datos conectada exitosamente');
 
-        // Iniciar el servidor SÓLO si la conexión a la DB fue exitosa
-        app.listen(PORT, () => {
-            console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-        });
+        // Iniciar el servidor SÓLO si la conexión a la DB fue exitosa
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
+        });
 
-    } catch (err) {
-        console.error('Error al conectar a la base de datos:', err);
-        process.exit(1); // Detener la aplicación si no se puede conectar a la DB
-    }
+    } catch (err) {
+        console.error('Error al conectar a la base de datos:', err);
+        process.exit(1); // Detener la aplicación si no se puede conectar a la DB
+    }
 };
 
 // 8. Ejecutar la función de arranque
