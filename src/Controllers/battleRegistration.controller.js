@@ -1,282 +1,395 @@
-// Controllers/battleRegistration.controller.js
+// Controllers/mercadopago.controller.js
 const BattleRegistration = require('../Models/battleRegistration.model.js');
-const User = require('../Models/user.model.js');
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const { 
+    sendRegistrationConfirmationEmail,
+    sendPaymentPendingEmail,
+    sendPaymentRejectedEmail 
+} = require('../services/email.service.js');
 
-// === CREAR REGISTRO (Paso 1: Guardar datos, Pago Pendiente) ===
-exports.createRegistration = async (req, res) => {
+// === CREAR PREFERENCIA DE PAGO ===
+exports.createPaymentPreference = async (req, res) => {
     try {
-        console.log("📝 Datos recibidos para registro Battle:", req.body);
+        console.log("💳 Creando preferencia de pago para:", req.body);
+        
+        // 🔥 VERIFICAR VARIABLES DE ENTORNO
+        console.log("🔑 MP_ACCESS_TOKEN existe?:", process.env.MP_ACCESS_TOKEN ? "SÍ" : "NO");
+        console.log("🌐 API_URL:", process.env.API_URL);
+        console.log("🚀 FRONTEND_URL:", process.env.FRONTEND_URL);
 
         const {
-            firstName,
-            lastName,
-            birthDate,
-            email,
-            whatsapp,
-            category,
-            emergencyName,
-            emergencyPhone,
-            emergencyRelation,
-            medicalConditions,
-            medications,
-            waiverAccepted,
-            imageAuthorized,
-            amount
+            registrationId,
+            amount,
+            title,
+            description,
+            payer
         } = req.body;
 
-        // Validar campos obligatorios
-        if (!firstName || !lastName || !birthDate || !email || !whatsapp || !category) {
-            return res.status(400).json({
-                message: "Faltan campos obligatorios"
-            });
-        }
-
-        if (!waiverAccepted) {
-            return res.status(400).json({
-                message: "Debes aceptar el waiver de responsabilidad"
-            });
-        }
-
-        // Validar edad (mayor de 18)
-        const birth = new Date(birthDate);
-        const today = new Date();
-        const age = today.getFullYear() - birth.getFullYear();
-        if (age < 18) {
-            return res.status(400).json({
-                message: "Debes ser mayor de 18 años para registrarte"
-            });
-        }
-
-        // Verificar si ya existe registro con este email
-        const existingRegistration = await BattleRegistration.findOne({
-            email: email.toLowerCase(),
-            status: { $ne: 'cancelled' }
-        });
-
-        if (existingRegistration) {
-            return res.status(400).json({
-                message: "Ya existe un registro con este email"
-            });
-        }
-
-        // Obtener usuario si está autenticado
-        let user = null;
-        let firebaseUid = null;
-        if (req.user) {
-            user = await User.findOne({ firebaseUid: req.user.uid });
-            firebaseUid = req.user.uid;
-        }
-
-        // Generar código único
-        const registrationCode = BattleRegistration.generateRegistrationCode();
-
-        // Crear registro
-        const newRegistration = new BattleRegistration({
-            firstName,
-            lastName,
-            birthDate,
-            email: email.toLowerCase(),
-            whatsapp,
-            category,
-            emergencyContact: {
-                name: emergencyName,
-                phone: emergencyPhone,
-                relation: emergencyRelation || ''
-            },
-            medical: {
-                conditions: medicalConditions || '',
-                medications: medications || ''
-            },
-            waivers: {
-                liabilityAccepted: waiverAccepted,
-                imageAuthorized: imageAuthorized || false
-            },
-            payment: {
-                amount: amount || 90000,
-                method: 'pending',
-                status: 'pending'
-            },
-            user: user ? user._id : null,
-            firebaseUid: firebaseUid,
-            status: 'pending_payment',
-            registrationCode
-        });
-
-        await newRegistration.save();
-
-        console.log("🎉 Registro Battle creado:", newRegistration._id);
-
-        res.status(201).json({
-            message: "Registro creado exitosamente. Procede al pago.",
-            registration: {
-                id: newRegistration._id,
-                code: newRegistration.registrationCode,
-                amount: newRegistration.payment.amount,
-                category: newRegistration.category,
-                fullName: newRegistration.fullName
-            }
-        });
-
-    } catch (error) {
-        console.error("❌ Error al crear registro Battle:", error);
-        res.status(500).json({
-            message: "Error al crear el registro",
-            error: error.message
-        });
-    }
-};
-
-// === ACTUALIZAR ESTADO DE PAGO (Webhook MercadoPago) ===
-exports.updatePaymentStatus = async (req, res) => {
-    try {
-        const { registrationId, paymentData } = req.body;
-
+        // Validar que el registro existe
         const registration = await BattleRegistration.findById(registrationId);
         if (!registration) {
+            console.log("❌ Registro no encontrado:", registrationId);
             return res.status(404).json({
                 message: "Registro no encontrado"
             });
         }
 
-        // Actualizar pago
-        registration.payment.status = paymentData.status;
-        registration.payment.method = 'mercadopago';
-        registration.payment.transactionId = paymentData.id;
-        registration.payment.mercadoPagoData = paymentData;
-        
-        if (paymentData.status === 'approved') {
-            registration.payment.paidAt = new Date();
-            registration.status = 'confirmed';
+        console.log("✅ Registro encontrado:", registration._id);
+
+        // 🔥 VALIDAR DATOS CRÍTICOS
+        if (!amount || !payer || !payer.email) {
+            console.log("❌ Datos incompletos:", { amount, payer });
+            return res.status(400).json({
+                message: "Datos incompletos para crear el pago"
+            });
         }
 
-        await registration.save();
-
-        console.log("💳 Pago actualizado:", registrationId, paymentData.status);
-
-        res.status(200).json({
-            message: "Estado de pago actualizado",
-            registration
+        // 🔥 CONFIGURACIÓN MEJORADA DE MERCADOPAGO
+        const client = new MercadoPagoConfig({
+            accessToken: process.env.MP_ACCESS_TOKEN,
+            options: { 
+                timeout: 10000, // Aumentar timeout
+                idempotencyKey: 'battle-' + Date.now()
+            }
         });
 
-    } catch (error) {
-        console.error("❌ Error al actualizar pago:", error);
-        res.status(500).json({
-            message: "Error al actualizar el pago",
-            error: error.message
-        });
-    }
-};
+        const preference = new Preference(client);
 
-// === OBTENER TODOS LOS REGISTROS (Admin) ===
-exports.getAllRegistrations = async (req, res) => {
-    try {
-        const { category, status, paymentStatus } = req.query;
-
-        let filter = {};
-        if (category) filter.category = category;
-        if (status) filter.status = status;
-        if (paymentStatus) filter['payment.status'] = paymentStatus;
-
-        const registrations = await BattleRegistration.find(filter)
-            .populate('user', 'nombre apellidos email')
-            .sort({ createdAt: -1 });
-
-        // Estadísticas rápidas
-        const stats = {
-            total: registrations.length,
-            confirmed: registrations.filter(r => r.status === 'confirmed').length,
-            pending: registrations.filter(r => r.status === 'pending_payment').length,
-            byCategory: {
-                'intermedio-male': registrations.filter(r => r.category === 'intermedio-male').length,
-                'intermedio-female': registrations.filter(r => r.category === 'intermedio-female').length,
-                'scaled-male': registrations.filter(r => r.category === 'scaled-male').length,
-                'scaled-female': registrations.filter(r => r.category === 'scaled-female').length,
+        // 🔥 DATOS DE PREFERENCIA MEJORADOS
+        const preferenceData = {
+            items: [
+                {
+                    id: registrationId.toString(),
+                    title: title || `WOD MATCH BATTLE - ${registration.category.toUpperCase()}`,
+                    description: description || `Inscripción: ${registration.firstName} ${registration.lastName}`,
+                    quantity: 1,
+                    currency_id: 'COP',
+                    unit_price: parseFloat(amount) / 100  // 🔥 Convertir centavos a pesos
+                }
+            ],
+            payer: {
+                name: payer.name || registration.firstName,
+                surname: payer.surname || registration.lastName,
+                email: payer.email || registration.email,
+                phone: {
+                    area_code: '57', // Colombia
+                    number: payer.phone ? payer.phone.replace(/\D/g, '').slice(-10) : registration.whatsapp.replace(/\D/g, '').slice(-10)
+                }
+            },
+            external_reference: registrationId.toString(),
+            notification_url: `${process.env.API_URL || 'http://localhost:5000'}/api/battle-registrations/webhook/mercadopago`,
+            back_urls: {
+                success: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/battle/payment-success`,
+                failure: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/battle/payment-failure`, 
+                pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/battle/payment-pending`
+            },
+            auto_return: 'approved',
+            statement_descriptor: 'WODMATCH BATTLE',
+            metadata: {
+                registration_id: registrationId,
+                registration_code: registration.registrationCode,
+                category: registration.category,
+                user_email: registration.email
             }
         };
 
-        res.status(200).json({
-            registrations,
-            stats
-        });
+        console.log("📤 Enviando a MercadoPago:", JSON.stringify(preferenceData, null, 2));
 
-    } catch (error) {
-        console.error("❌ Error al obtener registros:", error);
-        res.status(500).json({
-            message: "Error al obtener registros",
-            error: error.message
-        });
-    }
-};
+        const response = await preference.create({ body: preferenceData });
 
-// === OBTENER UN REGISTRO POR ID ===
-exports.getRegistrationById = async (req, res) => {
-    try {
-        const registration = await BattleRegistration.findById(req.params.id)
-            .populate('user', 'nombre apellidos email');
-
-        if (!registration) {
-            return res.status(404).json({
-                message: "Registro no encontrado"
-            });
-        }
-
-        res.status(200).json({ registration });
-
-    } catch (error) {
-        console.error("❌ Error al obtener registro:", error);
-        res.status(500).json({
-            message: "Error al obtener registro",
-            error: error.message
-        });
-    }
-};
-
-// === OBTENER MIS REGISTROS (Usuario autenticado) ===
-exports.getMyRegistrations = async (req, res) => {
-    try {
-        if (!req.user) {
-            return res.status(401).json({
-                message: "Usuario no autenticado"
-            });
-        }
-
-        const registrations = await BattleRegistration.find({
-            firebaseUid: req.user.uid
-        }).sort({ createdAt: -1 });
-
-        res.status(200).json({ registrations });
-
-    } catch (error) {
-        console.error("❌ Error al obtener mis registros:", error);
-        res.status(500).json({
-            message: "Error al obtener tus registros",
-            error: error.message
-        });
-    }
-};
-
-// === CANCELAR REGISTRO ===
-exports.cancelRegistration = async (req, res) => {
-    try {
-        const registration = await BattleRegistration.findById(req.params.id);
-
-        if (!registration) {
-            return res.status(404).json({
-                message: "Registro no encontrado"
-            });
-        }
-
-        registration.status = 'cancelled';
-        await registration.save();
+        console.log("✅ Preferencia creada exitosamente:", response.id);
 
         res.status(200).json({
-            message: "Registro cancelado exitosamente"
+            preference: {
+                id: response.id,
+                init_point: response.init_point,
+                sandbox_init_point: response.sandbox_init_point
+            }
         });
 
     } catch (error) {
-        console.error("❌ Error al cancelar registro:", error);
+        console.error("❌ ERROR CRÍTICO al crear preferencia MercadoPago:");
+        console.error("📌 Mensaje:", error.message);
+        console.error("📌 Stack:", error.stack);
+        
+        if (error.response) {
+            console.error("📌 Respuesta MP:", error.response.data);
+            console.error("📌 Status MP:", error.response.status);
+        }
+
         res.status(500).json({
-            message: "Error al cancelar registro",
+            message: "Error interno al crear preferencia de pago",
+            error: error.message,
+            details: error.response?.data || 'Sin detalles adicionales'
+        });
+    }
+};
+
+// === WEBHOOK DE MERCADOPAGO (CRÍTICO) ===
+exports.handleMercadoPagoWebhook = async (req, res) => {
+    try {
+        const { type, data } = req.body;
+
+        console.log("🔔 Webhook MercadoPago recibido:", type, data);
+
+        if (type === 'payment' && data && data.id) {
+            // 🔥 CONFIGURAR CLIENTE PARA EL WEBHOOK
+            const client = new MercadoPagoConfig({
+                accessToken: process.env.MP_ACCESS_TOKEN,
+                options: { timeout: 10000 }
+            });
+
+            const payment = new Payment(client);
+            
+            const paymentData = await payment.get({ id: data.id });
+            
+            console.log("💰 Pago obtenido:", paymentData);
+
+            const registrationId = paymentData.external_reference;
+            const status = paymentData.status;
+
+            const registration = await BattleRegistration.findById(registrationId);
+            if (!registration) {
+                console.error("❌ Registro no encontrado:", registrationId);
+                return res.status(404).json({ message: "Registro no encontrado" });
+            }
+
+            let newStatus = registration.status;
+            let paymentStatus = status;
+
+            // 🔥 LÓGICA DE EMAILS SEGÚN ESTADO DEL PAGO
+            if (status === 'approved') {
+                // ✅ PAGO APROBADO
+                newStatus = 'confirmed';
+                paymentStatus = 'approved';
+                registration.payment.paidAt = new Date();
+
+                // 🔥 ENVIAR EMAIL DE CONFIRMACIÓN
+                try {
+                    await sendRegistrationConfirmationEmail(registration);
+                    console.log("✅ Email de confirmación enviado a:", registration.email);
+                } catch (emailError) {
+                    console.error("❌ Error al enviar email de confirmación:", emailError);
+                }
+
+            } else if (status === 'rejected' || status === 'cancelled') {
+                // ❌ PAGO RECHAZADO
+                paymentStatus = 'rejected';
+
+                try {
+                    await sendPaymentRejectedEmail(registration);
+                    console.log("✅ Email de rechazo enviado a:", registration.email);
+                } catch (emailError) {
+                    console.error("❌ Error al enviar email de rechazo:", emailError);
+                }
+
+            } else if (status === 'pending' || status === 'in_process') {
+                // ⏳ PAGO PENDIENTE
+                paymentStatus = 'pending';
+
+                try {
+                    await sendPaymentPendingEmail(registration);
+                    console.log("✅ Email de pendiente enviado a:", registration.email);
+                } catch (emailError) {
+                    console.error("❌ Error al enviar email de pendiente:", emailError);
+                }
+            }
+
+            // Actualizar registro en la base de datos
+            registration.status = newStatus;
+            registration.payment.status = paymentStatus;
+            registration.payment.method = 'mercadopago';
+            registration.payment.transactionId = paymentData.id.toString();
+            registration.payment.mercadoPagoData = paymentData;
+
+            await registration.save();
+
+            console.log("✅ Registro actualizado:", registrationId, "Status:", newStatus);
+        }
+
+        res.status(200).send('OK');
+
+    } catch (error) {
+        console.error("❌ Error en webhook MercadoPago:", error);
+        res.status(500).json({
+            message: "Error procesando webhook",
+            error: error.message
+        });
+    }
+};
+
+// === OBTENER INFO DE PREFERENCIA ===
+exports.getPreference = async (req, res) => {
+    try {
+        const { preferenceId } = req.params;
+        
+        const client = new MercadoPagoConfig({
+            accessToken: process.env.MP_ACCESS_TOKEN,
+            options: { timeout: 5000 }
+        });
+
+        const preference = new Preference(client);
+        const preferenceData = await preference.get({ id: preferenceId });
+        
+        res.status(200).json({
+            preference: {
+                id: preferenceData.id,
+                init_point: preferenceData.init_point,
+                sandbox_init_point: preferenceData.sandbox_init_point
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Error al obtener preferencia:", error);
+        res.status(500).json({
+            message: "Error al obtener preferencia",
+            error: error.message
+        });
+    }
+};
+
+// === VERIFICAR ESTADO DE PAGO ===
+exports.checkPaymentStatus = async (req, res) => {
+    try {
+        const { paymentId } = req.params;
+
+        const client = new MercadoPagoConfig({
+            accessToken: process.env.MP_ACCESS_TOKEN,
+            options: { timeout: 5000 }
+        });
+
+        const payment = new Payment(client);
+        const paymentData = await payment.get({ id: paymentId });
+        
+        const registrationId = paymentData.external_reference;
+        const registration = await BattleRegistration.findById(registrationId);
+
+        res.status(200).json({
+            payment: {
+                id: paymentData.id,
+                status: paymentData.status,
+                status_detail: paymentData.status_detail
+            },
+            registration: registration ? {
+                id: registration._id,
+                code: registration.registrationCode,
+                status: registration.status,
+                paymentStatus: registration.payment.status
+            } : null
+        });
+
+    } catch (error) {
+        console.error("❌ Error al verificar pago:", error);
+        res.status(500).json({
+            message: "Error al verificar estado de pago",
+            error: error.message
+        });
+    }
+};
+
+// === ENDPOINT DE PRUEBA PARA MERCADOPAGO (SOLO DESARROLLO) ===
+exports.testMercadoPagoConnection = async (req, res) => {
+    try {
+        console.log("🧪 Probando conexión con MercadoPago...");
+        
+        // 🔥 VERIFICAR TOKEN
+        if (!process.env.MP_ACCESS_TOKEN) {
+            return res.status(500).json({
+                success: false,
+                message: "MP_ACCESS_TOKEN no configurado"
+            });
+        }
+
+        console.log("🔑 Token MP encontrado, longitud:", process.env.MP_ACCESS_TOKEN.length);
+        
+        const client = new MercadoPagoConfig({
+            accessToken: process.env.MP_ACCESS_TOKEN,
+            options: { timeout: 10000 }
+        });
+
+        const preference = new Preference(client);
+        
+        // Datos de prueba mínimos
+        const testData = {
+            items: [
+                {
+                    title: "TEST WOD MATCH BATTLE",
+                    quantity: 1,
+                    currency_id: "COP",
+                    unit_price: 10.00 // $10 COP
+                }
+            ],
+            notification_url: `${process.env.API_URL || 'http://localhost:5000'}/api/battle-registrations/webhook/mercadopago`,
+            auto_return: "approved",
+            back_urls: {
+                success: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/battle/payment-success`,
+                failure: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/battle/payment-failure`,
+                pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/battle/payment-pending`
+            }
+        };
+
+        console.log("📤 Enviando datos de prueba a MP...");
+        const response = await preference.create({ body: testData });
+        
+        console.log("✅ Conexión con MP exitosa:", response.id);
+        
+        res.status(200).json({
+            success: true,
+            message: "Conexión con MercadoPago exitosa",
+            preferenceId: response.id,
+            init_point: response.init_point
+        });
+
+    } catch (error) {
+        console.error("❌ Error en conexión MP:", error.message);
+        console.error("📌 Stack:", error.stack);
+        
+        if (error.response) {
+            console.error("📌 Respuesta de error MP:", error.response.data);
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: "Error en conexión con MercadoPago",
+            error: error.message,
+            details: error.response?.data || 'Sin detalles adicionales'
+        });
+    }
+};
+
+// === LIMPIAR REGISTROS DE TESTING (SOLO DESARROLLO) ===
+exports.cleanTestRegistrations = async (req, res) => {
+    try {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(403).json({
+                message: "Esta función solo está disponible en desarrollo"
+            });
+        }
+
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                message: "Email requerido para limpiar registros"
+            });
+        }
+
+        const result = await BattleRegistration.deleteMany({
+            email: email.toLowerCase(),
+            status: 'pending_payment'
+        });
+
+        console.log(`🧹 Registros eliminados para ${email}: ${result.deletedCount}`);
+
+        res.status(200).json({
+            message: `Registros de testing eliminados: ${result.deletedCount}`,
+            deletedCount: result.deletedCount
+        });
+
+    } catch (error) {
+        console.error("❌ Error al limpiar registros:", error);
+        res.status(500).json({
+            message: "Error al limpiar registros",
             error: error.message
         });
     }
