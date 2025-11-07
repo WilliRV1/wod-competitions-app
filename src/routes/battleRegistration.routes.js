@@ -1,31 +1,64 @@
 // routes/battleRegistration.routes.js
 const express = require("express");
-const router = express.Router(); // 🔥 CAMBIO IMPORTANTE: Usar express.Router()
+const router = express.Router();
 const controller = require("../Controllers/battleRegistration.controller");
-const mpController = require("../Controllers/mercadopago.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 
-// === RUTAS PÚBLICAS ===
+// ========================================
+// RUTAS PÚBLICAS (Sin autenticación)
+// ========================================
+
+// Crear registro (paso 1)
 router.post('/', controller.createRegistration);
+
+// Obtener cupos disponibles
 router.get('/slots/:category', controller.getAvailableSlotsByCategory);
 router.get('/slots', controller.getAllAvailableSlots);
 
-// === RUTAS MERCADOPAGO ===
-router.post('/create-payment', mpController.createPaymentPreference);
-router.post('/webhook/mercadopago', mpController.handleMercadoPagoWebhook);
-router.get('/preference/:preferenceId', mpController.getPreference);
-router.get('/payment-status/:paymentId', mpController.checkPaymentStatus);
+// ========================================
+// RUTAS MERCADOPAGO
+// ========================================
 
-// === RUTAS DE TESTING (SOLO DESARROLLO) ===
-router.get('/test-mp', mpController.testMercadoPagoConnection);
-router.delete('/admin/clean-test', mpController.cleanTestRegistrations);
+// Crear preferencia de pago (paso 2)
+router.post('/create-payment', controller.createPaymentPreference);
 
-// === RUTAS PROTEGIDAS ===
+// Webhook de MercadoPago (MercadoPago lo llama)
+router.post('/webhook/mercadopago', controller.handleMercadoPagoWebhook);
+
+// Obtener info de preferencia
+router.get('/preference/:preferenceId', controller.getPreference);
+
+// Verificar estado de pago
+router.get('/payment-status/:paymentId', controller.checkPaymentStatus);
+
+// ========================================
+// RUTAS DE TESTING (Solo desarrollo)
+// ========================================
+
+// Test de conexión con MercadoPago
+router.get('/test-mp', controller.testMercadoPagoConnection);
+
+// Limpiar registros de prueba
+router.delete('/admin/clean-test', controller.cleanTestRegistrations);
+
+// ========================================
+// RUTAS PROTEGIDAS (Requieren autenticación)
+// ========================================
+
+// Obtener mis registros
 router.get('/my-registrations', authMiddleware, controller.getMyRegistrations);
+
+// Cancelar mi registro
 router.delete('/:id', authMiddleware, controller.cancelRegistration);
 
-// === RUTAS ADMIN ===
+// ========================================
+// RUTAS ADMIN (Requieren autenticación)
+// ========================================
+
+// Obtener todos los registros (con filtros)
 router.get('/admin/all', authMiddleware, controller.getAllRegistrations);
+
+// Obtener un registro específico
 router.get('/admin/:id', authMiddleware, controller.getRegistrationById);
 
 module.exports = router;
