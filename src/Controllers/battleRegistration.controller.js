@@ -373,115 +373,125 @@ exports.getAllAvailableSlots = async (req, res) => {
 // ========================================
 
 // === CREAR PREFERENCIA DE PAGO ===
+// === CREAR PREFERENCIA DE PAGO ===
 exports.createPaymentPreference = async (req, res) => {
-    try {
-        console.log("💳 Creando preferencia de pago para:", req.body);
+  try {
+    console.log("💳 Creando preferencia de pago para:", req.body);
 
-        const {
-            registrationId,
-            amount,
-            title,
-            description,
-            payer
-        } = req.body;
+    const {
+      registrationId,
+      amount,
+      title,
+      description,
+      payer
+    } = req.body;
 
-        // Validar que el registro existe
-        const registration = await BattleRegistration.findById(registrationId);
-        if (!registration) {
-            console.log("❌ Registro no encontrado:", registrationId);
-            return res.status(404).json({
-                message: "Registro no encontrado"
-            });
-        }
-
-        console.log("✅ Registro encontrado:", registration._id);
-
-        if (!amount || !payer || !payer.email) {
-            console.log("❌ Datos incompletos:", { amount, payer });
-            return res.status(400).json({
-                message: "Datos incompletos para crear el pago"
-            });
-        }
-
-        const client = new MercadoPagoConfig({
-            accessToken: process.env.MP_ACCESS_TOKEN,
-            options: { 
-                timeout: 10000,
-                idempotencyKey: 'battle-' + Date.now()
-            }
-        });
-
-        const preference = new Preference(client);
-
-        // 🔥 URLs CORREGIDAS - SIN METADATA
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const apiUrl = process.env.API_URL || 'http://localhost:5000';
-
-        const preferenceData = {
-            items: [
-                {
-                    id: registrationId.toString(),
-                    title: title || `WOD MATCH BATTLE - ${registration.category.toUpperCase()}`,
-                    description: description || `Inscripción: ${registration.firstName} ${registration.lastName}`,
-                    quantity: 1,
-                    currency_id: 'COP',
-                    unit_price: parseFloat(amount)
-                }
-            ],
-            payer: {
-                name: payer.name || registration.firstName,
-                surname: payer.surname || registration.lastName,
-                email: payer.email || registration.email,
-                phone: {
-                    area_code: '57',
-                    number: payer.phone ? payer.phone.replace(/\D/g, '').slice(-10) : registration.whatsapp.replace(/\D/g, '').slice(-10)
-                }
-            },
-            external_reference: registrationId.toString(),
-            back_urls: {
-                success: `${frontendUrl}/battle/payment-success`,
-                failure: `${frontendUrl}/battle/payment-failure`,
-                pending: `${frontendUrl}/battle/payment-pending`
-            },
-            auto_return: 'approved',
-            statement_descriptor: 'WODMATCH'
-        };
-
-        // Solo agregar notification_url si NO es localhost
-        if (!apiUrl.includes('localhost')) {
-            preferenceData.notification_url = `${apiUrl}/api/battle-registrations/webhook/mercadopago`;
-        }
-
-        console.log("📤 Enviando a MercadoPago:", JSON.stringify(preferenceData, null, 2));
-
-        const response = await preference.create({ body: preferenceData });
-
-        console.log("✅ Preferencia creada exitosamente:", response.id);
-
-        res.status(200).json({
-            preference: {
-                id: response.id,
-                init_point: response.init_point,
-                sandbox_init_point: response.sandbox_init_point
-            }
-        });
-
-    } catch (error) {
-        console.error("❌ ERROR CRÍTICO al crear preferencia MercadoPago:");
-        console.error("📌 Mensaje:", error.message);
-        console.error("📌 Stack:", error.stack);
-        
-        if (error.response) {
-            console.error("📌 Respuesta MP:", error.response.data);
-            console.error("📌 Status MP:", error.response.status);
-        }
-
-        res.status(500).json({
-            message: "Error interno al crear preferencia de pago",
-            error: error.message,
-            details: error.response?.data || 'Sin detalles adicionales'
-        });
+    // Validar que el registro existe
+    const registration = await BattleRegistration.findById(registrationId);
+    if (!registration) {
+      console.log("❌ Registro no encontrado:", registrationId);
+      return res.status(404).json({
+        message: "Registro no encontrado"
+      });
     }
+
+    console.log("✅ Registro encontrado:", registration._id);
+
+    if (!amount || !payer || !payer.email) {
+      console.log("❌ Datos incompletos:", { amount, payer });
+      return res.status(400).json({
+        message: "Datos incompletos para crear el pago"
+      });
+    }
+
+    const client = new MercadoPagoConfig({
+      accessToken: process.env.MP_ACCESS_TOKEN,
+      options: { 
+        timeout: 10000,
+        idempotencyKey: 'battle-' + Date.now()
+      }
+    });
+
+    const preference = new Preference(client);
+
+    // 🔥 URLs CORREGIDAS
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const apiUrl = process.env.API_URL || 'http://localhost:5000';
+    
+    // Detectar si estamos en TEST o PRODUCCIÓN
+    const isTestMode = process.env.MP_ACCESS_TOKEN?.startsWith('TEST-');
+
+    const preferenceData = {
+      items: [
+        {
+          id: registrationId.toString(),
+          title: title || `WOD MATCH BATTLE - ${registration.category.toUpperCase()}`,
+          description: description || `Inscripción: ${registration.firstName} ${registration.lastName}`,
+          quantity: 1,
+          currency_id: 'COP',
+          unit_price: parseFloat(amount)
+        }
+      ],
+      payer: {
+        name: payer.name || registration.firstName,
+        surname: payer.surname || registration.lastName,
+        email: payer.email || registration.email,
+        phone: {
+          area_code: '57',
+          number: payer.phone ? payer.phone.replace(/\D/g, '').slice(-10) : registration.whatsapp.replace(/\D/g, '').slice(-10)
+        }
+      },
+      external_reference: registrationId.toString(),
+      back_urls: {
+        success: `${frontendUrl}/battle/payment-success`,
+        failure: `${frontendUrl}/battle/payment-failure`,
+        pending: `${frontendUrl}/battle/payment-pending`
+      },
+      auto_return: 'approved',
+      statement_descriptor: 'WODMATCH'
+    };
+
+    // Solo agregar notification_url si NO es localhost
+    if (!apiUrl.includes('localhost')) {
+      preferenceData.notification_url = `${apiUrl}/api/battle-registrations/webhook/mercadopago`;
+    }
+    
+    // ⚠️ ADVERTENCIA en consola si hay problemas de configuración
+    if (!isTestMode && frontendUrl.includes('localhost')) {
+      console.warn('⚠️ ADVERTENCIA: Estás usando credenciales de PRODUCCIÓN con localhost.');
+      console.warn('⚠️ MercadoPago requiere HTTPS. Usa credenciales de TEST o configura ngrok.');
+    }
+
+    console.log("📤 Enviando a MercadoPago:", JSON.stringify(preferenceData, null, 2));
+
+    const response = await preference.create({ body: preferenceData });
+
+    console.log("✅ Preferencia creada exitosamente:", response.id);
+
+    res.status(200).json({
+      preference: {
+        id: response.id,
+        init_point: response.init_point,
+        sandbox_init_point: response.sandbox_init_point
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ ERROR CRÍTICO al crear preferencia MercadoPago:");
+    console.error("📌 Mensaje:", error.message);
+    console.error("📌 Stack:", error.stack);
+    
+    if (error.response) {
+      console.error("📌 Respuesta MP:", error.response.data);
+      console.error("📌 Status MP:", error.response.status);
+    }
+
+    res.status(500).json({
+      message: "Error interno al crear preferencia de pago",
+      error: error.message,
+      details: error.response?.data || 'Sin detalles adicionales'
+    });
+  }
 };
 
 // === WEBHOOK DE MERCADOPAGO ===
