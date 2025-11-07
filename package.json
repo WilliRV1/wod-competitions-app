@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "description": "Aplicación web para conectar a la comunidad de CrossFit en Colombia, encontrar competencias y buscar compañeros de equipo.",
   "main": "index.js",
-
   "scripts": {
-  "test": "echo \"Error: no test specified\" && exit 1",
-  "dev": "nodemon src/server.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/server.js"
   },
   "repository": {
     "type": "git",
@@ -20,8 +19,14 @@
   },
   "homepage": "https://github.com/WilliRV1/wod-competitions-app#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "firebase-admin": "^13.5.0",
+    "mercadopago": "^2.10.0",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.19.2",
+    "nodemailer": "^7.0.10"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
