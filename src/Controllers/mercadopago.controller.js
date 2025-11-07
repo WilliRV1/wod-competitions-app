@@ -14,6 +14,8 @@ const payment = new Payment(client);
 // === CREAR PREFERENCIA DE PAGO ===
 exports.createPaymentPreference = async (req, res) => {
     try {
+        console.log("💳 Creando preferencia de pago para:", req.body);
+
         const {
             registrationId,
             amount,
@@ -21,8 +23,6 @@ exports.createPaymentPreference = async (req, res) => {
             description,
             payer
         } = req.body;
-
-        console.log("💳 Creando preferencia de pago para:", registrationId);
 
         // Validar que el registro existe
         const registration = await BattleRegistration.findById(registrationId);
@@ -38,7 +38,7 @@ exports.createPaymentPreference = async (req, res) => {
                 {
                     title: title || `WOD MATCH BATTLE - ${registration.category}`,
                     description: description || `Inscripción ${registration.fullName}`,
-                    unit_price: parseFloat(amount),
+                    unit_price: parseFloat(amount) / 100, // Convertir a formato decimal
                     quantity: 1,
                     currency_id: 'COP'
                 }
@@ -66,6 +66,8 @@ exports.createPaymentPreference = async (req, res) => {
             }
         };
 
+        console.log("📤 Enviando a MercadoPago:", preferenceData);
+
         const response = await preference.create({ body: preferenceData });
 
         console.log("✅ Preferencia creada:", response.id);
@@ -87,7 +89,7 @@ exports.createPaymentPreference = async (req, res) => {
     }
 };
 
-// === WEBHOOK DE MERCADOPAGO (CRÍTICO) ===
+// === WEBHOOK DE MERCADOPAGO ===
 exports.handleMercadoPagoWebhook = async (req, res) => {
     try {
         const { type, data } = req.body;
@@ -108,28 +110,20 @@ exports.handleMercadoPagoWebhook = async (req, res) => {
                 return res.status(404).json({ message: "Registro no encontrado" });
             }
 
-            let newStatus = registration.status;
-            let paymentStatus = status;
-
-            if (status === 'approved') {
-                newStatus = 'confirmed';
-                paymentStatus = 'approved';
-                registration.payment.paidAt = new Date();
-            } else if (status === 'rejected' || status === 'cancelled') {
-                paymentStatus = 'rejected';
-            } else if (status === 'pending' || status === 'in_process') {
-                paymentStatus = 'pending';
-            }
-
-            registration.status = newStatus;
-            registration.payment.status = paymentStatus;
+            // Actualizar pago
+            registration.payment.status = status;
             registration.payment.method = 'mercadopago';
-            registration.payment.transactionId = paymentData.id.toString();
+            registration.payment.transactionId = paymentData.id;
             registration.payment.mercadoPagoData = paymentData;
+            
+            if (status === 'approved') {
+                registration.payment.paidAt = new Date();
+                registration.status = 'confirmed';
+            }
 
             await registration.save();
 
-            console.log("✅ Registro actualizado:", registrationId, "Status:", newStatus);
+            console.log("💳 Pago actualizado:", registrationId, status);
         }
 
         res.status(200).send('OK');
@@ -195,6 +189,43 @@ exports.checkPaymentStatus = async (req, res) => {
         console.error("❌ Error al verificar pago:", error);
         res.status(500).json({
             message: "Error al verificar estado de pago",
+            error: error.message
+        });
+    }
+};
+
+// === TEST MERCADOPAGO (SOLO DESARROLLO) ===
+exports.testMercadoPagoConnection = async (req, res) => {
+    try {
+        console.log("🧪 Probando conexión con MercadoPago...");
+        
+        const testData = {
+            items: [
+                {
+                    title: "TEST WOD MATCH BATTLE",
+                    quantity: 1,
+                    currency_id: "COP",
+                    unit_price: 10.00
+                }
+            ],
+            auto_return: "approved"
+        };
+
+        const response = await preference.create({ body: testData });
+        
+        console.log("✅ Conexión con MP exitosa:", response.id);
+        
+        res.status(200).json({
+            success: true,
+            message: "Conexión con MercadoPago exitosa",
+            preferenceId: response.id
+        });
+
+    } catch (error) {
+        console.error("❌ Error en conexión MP:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Error en conexión con MercadoPago",
             error: error.message
         });
     }
