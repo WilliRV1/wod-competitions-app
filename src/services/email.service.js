@@ -1,12 +1,14 @@
 // src/services/email.service.js
 const nodemailer = require('nodemailer');
 
-// Configurar transporter (usando Gmail como ejemplo)
+// Configurar transporter (USANDO BREVO COMO EJEMPLO)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.EMAIL_HOST, // smtp-relay.brevo.com
+    port: process.env.EMAIL_PORT, // 587
+    secure: false, // true para 465, false para otros puertos
     auth: {
-        user: process.env.EMAIL_USER, // tu-email@gmail.com
-        pass: process.env.EMAIL_PASSWORD // tu contraseña de aplicación
+        user: process.env.EMAIL_USER, // tu-email@de-brevo.com
+        pass: process.env.EMAIL_PASSWORD // tu-clave-api-smtp
     }
 });
 

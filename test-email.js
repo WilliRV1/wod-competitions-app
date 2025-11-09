@@ -5,12 +5,12 @@ const { sendRegistrationConfirmationEmail } = require('./src/services/email.serv
 const testRegistration = {
     firstName: 'William ',
     lastName: 'Reyes Valencia',
-    email: 'nathalydayanmontes@gmail.com', // TU EMAIL PARA PROBAR
+    email: 'delfos.cali@gmail.com', // TU EMAIL PARA PROBAR
     whatsapp: '+573136336446',
     category: 'intermedio-male',
     registrationCode: 'WM-TEST123',
     payment: {
-        amount: 90000
+        amount: 90000   
     },
     emergencyContact: {
         name: 'María Pérez',
