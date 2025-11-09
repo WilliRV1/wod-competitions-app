@@ -521,52 +521,56 @@ exports.handleMercadoPagoWebhook = async (req, res) => {
                 console.error("❌ Registro no encontrado:", registrationId);
                 return res.status(404).json({ message: "Registro no encontrado" });
             }
+            
+            // Si el pago ya fue procesado, no hacer nada más
+            if (registration.payment.status === 'approved') {
+                 console.log("ℹ️  Este pago ya fue procesado anteriormente.");
+                 return res.status(200).send('OK');
+            }
 
             let newStatus = registration.status;
             let paymentStatus = status;
 
+            // Determinar los nuevos estados
             if (status === 'approved') {
                 newStatus = 'confirmed';
                 paymentStatus = 'approved';
                 registration.payment.paidAt = new Date();
-
-                try {
-                    await sendRegistrationConfirmationEmail(registration);
-                    console.log("✅ Email de confirmación enviado a:", registration.email);
-                } catch (emailError) {
-                    console.error("❌ Error al enviar email de confirmación:", emailError);
-                }
-
             } else if (status === 'rejected' || status === 'cancelled') {
                 paymentStatus = 'rejected';
-
-                try {
-                    await sendPaymentRejectedEmail(registration);
-                    console.log("✅ Email de rechazo enviado a:", registration.email);
-                } catch (emailError) {
-                    console.error("❌ Error al enviar email de rechazo:", emailError);
-                }
-
             } else if (status === 'pending' || status === 'in_process') {
                 paymentStatus = 'pending';
-
-                try {
-                    await sendPaymentPendingEmail(registration);
-                    console.log("✅ Email de pendiente enviado a:", registration.email);
-                } catch (emailError) {
-                    console.error("❌ Error al enviar email de pendiente:", emailError);
-                }
             }
 
+            // Actualizar el registro en la DB
             registration.status = newStatus;
             registration.payment.status = paymentStatus;
             registration.payment.method = 'mercadopago';
             registration.payment.transactionId = paymentData.id.toString();
             registration.payment.mercadoPagoData = paymentData;
 
+            // ¡¡PASO 1: GUARDAR EN LA BASE DE DATOS PRIMERO!!
             await registration.save();
 
-            console.log("✅ Registro actualizado:", registrationId, "Status:", newStatus);
+            console.log("✅ Registro actualizado en DB:", registrationId, "Status:", newStatus);
+
+            // ¡¡PASO 2: INTENTAR ENVIAR EMAIL DESPUÉS!!
+            // Ahora, si esto falla, la base de datos ya está actualizada.
+            try {
+                if (status === 'approved') {
+                    await sendRegistrationConfirmationEmail(registration);
+                    console.log("✅ Email de confirmación enviado a:", registration.email);
+                } else if (status === 'rejected' || status === 'cancelled') {
+                    await sendPaymentRejectedEmail(registration);
+                    console.log("✅ Email de rechazo enviado a:", registration.email);
+                } else if (status === 'pending' || status === 'in_process') {
+                    await sendPaymentPendingEmail(registration);
+                    console.log("✅ Email de pendiente enviado a:", registration.email);
+                }
+            } catch (emailError) {
+                // Ya no es un error crítico, solo lo logueamos
+                console.error("❌ Error al enviar email (pero la DB ya se actualizó):", emailError.message);
+            }
         }
 
         res.status(200).send('OK');
