@@ -19,7 +19,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // 5. Configurar Middlewares (¡ANTES DE LAS RUTAS!)
-app.use(cors());
+const corsOptions = {
+  origin: [
+    'https://f66150c41d77.ngrok-free.app', // Tu frontend de ngrok
+    'http://localhost:3000' // Tu frontend local (para pruebas)
+  ],
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(express.json()); // Middleware para que Express entienda JSON
 
 // 6. Configurar las Rutas
