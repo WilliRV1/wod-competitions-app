@@ -12,12 +12,12 @@ const matchSchema = new Schema({
     participante1: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        default: null
     },
     participante2: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        default: null
     },
     wod: {
         nombre: { type: String },
@@ -41,7 +41,27 @@ const matchSchema = new Schema({
         default: 'pendiente'
     },
     fechaProgramada: { type: Date },
-    fechaCompletada: { type: Date }
+    fechaCompletada: { type: Date },
+
+    // === BRACKET LINKING ===
+    nextMatchId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Match',
+        default: null
+    },
+    nextMatchSlot: {
+        type: String,
+        enum: ['participante1', 'participante2', null],
+        default: null
+    },
+    roundName: {
+        type: String,
+        default: '' // e.g., "Round of 16", "Quarterfinals", "Final"
+    },
+    bracketId: { // To group matches by bracket instance if needed
+        type: String,
+        default: null
+    }
 }, {
     timestamps: true
 });

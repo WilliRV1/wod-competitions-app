@@ -8,32 +8,37 @@ const userSchema = new Schema({
         required: true,
         unique: true
     },
-    email: { 
-        type: String, 
-        required: true, 
-        unique: true, 
-        trim: true, 
-        lowercase: true 
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user'
     },
-    nombre: { 
-        type: String, 
-        required: true, 
-        trim: true 
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        lowercase: true
     },
-    
+    nombre: {
+        type: String,
+        required: true,
+        trim: true
+    },
+
     // ===== CAMPOS OPCIONALES (Progressive Disclosure) =====
-    apellidos: { 
-        type: String, 
+    apellidos: {
+        type: String,
         trim: true,
         default: ''
     },
-    
+
     nivel: {
         type: String,
         enum: ['Novato', 'Intermedio', 'RX'],
         default: null // null hasta que el usuario lo complete
     },
-    
+
     boxAfiliado: {
         type: String,
         trim: true,
@@ -85,23 +90,23 @@ const userSchema = new Schema({
         type: Boolean,
         default: false
     },
-    
+
     onboardingStep: {
         type: Number,
         default: 0 // 0 = no iniciado, 1-3 = pasos completados
     },
-    
+
     lastActive: {
         type: Date,
         default: Date.now
     },
-    
+
     // ===== RELACIONES =====
     competencias: [{
         type: Schema.Types.ObjectId,
         ref: 'Competition'
     }],
-    
+
     boxesPropietarios: [{
         type: Schema.Types.ObjectId,
         ref: 'Box'
@@ -115,9 +120,9 @@ userSchema.index({ email: 1 });
 userSchema.index({ firebaseUid: 1 });
 
 // Virtual para nombre completo
-userSchema.virtual('nombreCompleto').get(function() {
-    return this.apellidos 
-        ? `${this.nombre} ${this.apellidos}` 
+userSchema.virtual('nombreCompleto').get(function () {
+    return this.apellidos
+        ? `${this.nombre} ${this.apellidos}`
         : this.nombre;
 });
 
