@@ -22,7 +22,8 @@ const PORT = process.env.PORT || 5000;
 const corsOptions = {
   origin: [
     'https://f66150c41d77.ngrok-free.app', // Tu frontend de ngrok
-    'http://localhost:3000' // Tu frontend local (para pruebas)
+    'http://localhost:3000', // Tu frontend local (para pruebas)
+    'https://wod-app-frontend-hvax.vercel.app' // Tu frontend en Vercel
   ],
   optionsSuccessStatus: 200
 };
@@ -49,7 +50,8 @@ const io = new Server(server, {
     origin: [
       'https://f66150c41d77.ngrok-free.app',
       'http://localhost:3000',
-      'http://localhost:5173' // Vite default port
+      'http://localhost:5173', // Vite default port
+      'https://wod-app-frontend-hvax.vercel.app' // Tu frontend en Vercel
     ],
     methods: ["GET", "POST"]
   }
