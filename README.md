@@ -1,66 +1,64 @@
-# wod-competitions-app
+# WODMATCH BATTLE - Backend
 
-Aplicación web para conectar a la comunidad de CrossFit en Colombia, encontrar competencias y buscar compañeros de equipo.
+Este repositorio contiene el **Backend** de la plataforma **WODMATCH BATTLE**. Es el encargado de gestionar la lógica de negocio, la persistencia de datos y la comunicación en tiempo real para las competencias de CrossFit.
 
-## 🚀 Empezando
+## 🏆 Cumplimiento con la Rúbrica del Proyecto Final
 
-Esta es la guía de instalación para levantar el servidor de backend localmente.
+El backend soporta las funcionalidades críticas solicitadas en la rúbrica:
+
+### 1. Almacenamiento y Base de Datos
+- **Base de Datos en la Nube**: Se utiliza **MongoDB Atlas** para el almacenamiento persistente de usuarios, competencias, brackets y resultados.
+- **Transacción de Datos**: API RESTful robusta para el manejo de operaciones CRUD (Crear, Leer, Actualizar, Eliminar).
+
+### 2. Comunicación en Tiempo Real
+- **Socket.io**: Implementación de un servidor de WebSockets para emitir eventos de actualización de brackets y resultados a todos los clientes conectados simultáneamente.
+
+### 3. Seguridad y Usuarios
+- **Validación**: Integración con el frontend para asegurar que las operaciones críticas sean realizadas por usuarios autorizados.
+- **Gestión de Usuarios**: Endpoints para la creación y administración de perfiles de atletas.
+
+### 4. Tecnologías Utilizadas
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Base de Datos**: MongoDB + Mongoose
+- **Tiempo Real**: Socket.io
+- **Otros**: Cors, Dotenv
+
+---
+
+## 📋 Información de Entrega
+
+### Despliegue (Deployment)
+El servicio backend se encuentra publicado en:
+- **URL del API:** [Enlace al Backend](https://wod-match-api.vercel.app) *(Por favor, actualizar con el enlace real)*
+
+### Integrantes del Equipo
+- **Nombre del Integrante 1** - Rol (Frontend/Backend)
+- **Nombre del Integrante 2** - Rol (Frontend/Backend)
+- **Nombre del Integrante 3** - Rol (Frontend/Backend)
+
+---
+
+## 🚀 Instalación y Ejecución Local
 
 ### Pre-requisitos
+- Node.js (v18 o superior)
+- MongoDB Atlas URI
 
-Asegúrate de tener instalado:
-* Node.js (v18 o superior)
-* npm
-* Git
-
-### Instalación
-
-1.  Clona el repositorio:
-    ```bash
-    git clone [https://github.com/WilliRV1/wod-competitions-app.git](https://github.com/WilliRV1/wod-competitions-app.git)
-    ```
-2.  Entra en la carpeta del proyecto:
-    ```bash
-    cd wod-competitions-app
-    ```
-3.  Instala las dependencias de npm:
+### Pasos
+1.  **Clonar el repositorio e instalar dependencias:**
     ```bash
     npm install
     ```
 
-### Variables de Entorno
+2.  **Configurar Variables de Entorno:**
+    Crea un archivo `.env` en la raíz con la siguiente variable:
+    ```env
+    MONGODB_URI=tu-cadena-de-conexion-de-mongodb-atlas
+    ```
 
-Para correr este proyecto, necesitas un archivo `.env` en la raíz del directorio. Este archivo **no** debe ser subido a Git.
-
-Crea un archivo `.env` y añade la siguiente variable:
-
-```env
-# Ejemplo de .env
-MONGODB_URI=tu-cadena-de-conexion-de-mongodb-atlas
-```
-Corriendo el Servidor
-
-Una vez instalado y con el .env configurado, puedes iniciar el servidor en modo de desarrollo:
-
-```
-
-npm run dev
-```
-El servidor se iniciará en http://localhost:5000 y se conectará a tu base de datos de MongoDB Atlas.
-
-🛠️ API Endpoints (En Desarrollo)
-La ruta base de la API es /api.
-
-Endpoints de Usuarios (/api/users)
-POST /api/users: Crea un nuevo usuario.
-
-GET /api/users: Obtiene una lista de todos los usuarios.
-
-GET /api/users/:id: Obtiene un usuario específico por su ID.
-
-PUT /api/users/:id: Actualiza un usuario específico.
-
-DELETE /api/users/:id: Borra un usuario específico.
-
-
----
+3.  **Iniciar el Servidor:**
+    ```bash
+    npm run dev
+    ```
+    El servidor iniciará en `http://localhost:5000`.

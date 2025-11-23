@@ -197,24 +197,30 @@ exports.updateMatchResult = async (req, res) => {
                 }
             },
             { new: true }
-        ).populate('battle', 'nombre fecha lugar')
-         .populate('participante1', 'nombre apellidos')
-         .populate('participante2', 'nombre apellidos')
-         .populate('resultado.ganador', 'nombre apellidos');
+        )
+            .populate('battle', 'nombre fecha lugar')
+            .populate('participante1', 'nombre apellidos')
+            .populate('participante2', 'nombre apellidos')
+            .populate('resultado.ganador', 'nombre apellidos');
+
+        // ---------- NUEVO ----------
+        // Emitir el evento a la room del battle
+        const io = req.app.get('io');
+        io.to(updatedMatch.battle.toString()).emit('match_update', updatedMatch);
+        // -------------------------
 
         res.status(200).json({
-            message: "Resultado del match actualizado",
+            message: 'Resultado del match actualizado',
             match: updatedMatch
         });
-
     } catch (error) {
         res.status(400).json({
-            message: "Error al actualizar resultado del match",
+            message: 'Error al actualizar resultado del match',
             error: error.message
         });
     }
-};
-
+}; 
+    
 // --- OBTENER MATCHES POR PARTICIPANTE ---
 exports.getMatchesByParticipant = async (req, res) => {
     try {
@@ -226,11 +232,11 @@ exports.getMatchesByParticipant = async (req, res) => {
                 { participante2: participantId }
             ]
         })
-        .populate('battle', 'nombre fecha lugar')
-        .populate('participante1', 'nombre apellidos')
-        .populate('participante2', 'nombre apellidos')
-        .populate('resultado.ganador', 'nombre apellidos')
-        .sort({ fechaProgramada: -1 });
+            .populate('battle', 'nombre fecha lugar')
+            .populate('participante1', 'nombre apellidos')
+            .populate('participante2', 'nombre apellidos')
+            .populate('resultado.ganador', 'nombre apellidos')
+            .sort({ fechaProgramada: -1 });
 
         res.status(200).json({ matches });
     } catch (error) {
@@ -250,11 +256,11 @@ exports.getMatchesByRound = async (req, res) => {
             battle: battleId,
             ronda: parseInt(round)
         })
-        .populate('battle', 'nombre fecha lugar')
-        .populate('participante1', 'nombre apellidos')
-        .populate('participante2', 'nombre apellidos')
-        .populate('resultado.ganador', 'nombre apellidos')
-        .sort({ fechaProgramada: 1 });
+            .populate('battle', 'nombre fecha lugar')
+            .populate('participante1', 'nombre apellidos')
+            .populate('participante2', 'nombre apellidos')
+            .populate('resultado.ganador', 'nombre apellidos')
+            .sort({ fechaProgramada: 1 });
 
         res.status(200).json({ matches });
     } catch (error) {
@@ -303,9 +309,9 @@ exports.startMatch = async (req, res) => {
             { estado: 'en_curso' },
             { new: true }
         ).populate('battle', 'nombre fecha lugar')
-         .populate('participante1', 'nombre apellidos')
-         .populate('participante2', 'nombre apellidos')
-         .populate('resultado.ganador', 'nombre apellidos');
+            .populate('participante1', 'nombre apellidos')
+            .populate('participante2', 'nombre apellidos')
+            .populate('resultado.ganador', 'nombre apellidos');
 
         res.status(200).json({
             message: "Match iniciado",
@@ -361,9 +367,9 @@ exports.completeMatch = async (req, res) => {
             },
             { new: true }
         ).populate('battle', 'nombre fecha lugar')
-         .populate('participante1', 'nombre apellidos')
-         .populate('participante2', 'nombre apellidos')
-         .populate('resultado.ganador', 'nombre apellidos');
+            .populate('participante1', 'nombre apellidos')
+            .populate('participante2', 'nombre apellidos')
+            .populate('resultado.ganador', 'nombre apellidos');
 
         res.status(200).json({
             message: "Match completado",

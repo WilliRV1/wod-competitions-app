@@ -13,6 +13,7 @@ router.get('/battle/:battleId/round/:round', controller.getMatchesByRound);
 
 // --- Rutas Protegidas (Solo usuarios autenticados) ---
 router.post('/', authMiddleware, controller.createMatch);
+// router.put('/:id/result', authMiddleware, controller.updateMatchResult); // TEMP: Auth disabled for testing
 router.put('/:id/result', authMiddleware, controller.updateMatchResult);
 router.put('/:id/start', authMiddleware, controller.startMatch);
 router.put('/:id/complete', authMiddleware, controller.completeMatch);
