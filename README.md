@@ -30,20 +30,15 @@ El backend soporta las funcionalidades críticas solicitadas en la rúbrica:
 
 ### Despliegue (Deployment)
 El servicio backend se encuentra publicado en:
-- **URL del API:** [Enlace al Backend](https://wod-match-api.vercel.app) *(Por favor, actualizar con el enlace real)*
+- **URL del API:** [Enlace al Backend](https://wod-competitions-app.onrender.com)
 
 ### Integrantes del Equipo
-- **Nombre del Integrante 1** - Rol (Frontend/Backend)
-- **Nombre del Integrante 2** - Rol (Frontend/Backend)
-- **Nombre del Integrante 3** - Rol (Frontend/Backend)
+- **William Reyes Valencia** - Backend 
+- **Nombre del Integrante 2** - Frontend/Figma 
 
 ---
 
-## 🚀 Instalación y Ejecución Local
 
-### Pre-requisitos
-- Node.js (v18 o superior)
-- MongoDB Atlas URI
 
 ### Pasos
 1.  **Clonar el repositorio e instalar dependencias:**
@@ -62,3 +57,4 @@ El servicio backend se encuentra publicado en:
     npm run dev
     ```
     El servidor iniciará en `http://localhost:5000`.
+
